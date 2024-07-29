@@ -2,10 +2,12 @@ from pydantic import BaseModel, PostgresDsn
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=('.env', '.local.env', '.env.prod')
-    )
+    model_config = SettingsConfigDict(env_file=(".env", ".local.env", ".env.prod"))
+
+    VERSION: str = "v1"
+    BASE_URL: str = f"/api/{VERSION}"
 
     # Application details
     APP_NAME: str = "Shorten API"
@@ -18,5 +20,6 @@ class Settings(BaseSettings):
     PG_PASSWORD: str
     PG_DATABASE_NAME: str
     PG_HOST: str
+
 
 settings = Settings()
