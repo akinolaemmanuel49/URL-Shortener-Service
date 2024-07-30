@@ -1,4 +1,4 @@
-from pydantic import BaseModel, PostgresDsn
+from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,6 +8,9 @@ class Settings(BaseSettings):
 
     VERSION: str = "v1"
     BASE_URL: str = f"/api/{VERSION}"
+    TOKEN_URI: str = f"http://localhost:8000{BASE_URL}/auth/token"
+    LOGOUT_REDIRECT_URI: str = f"http://localhost:8000{BASE_URL}/info"
+    APP_SECRET_KEY: str
 
     # Application details
     APP_NAME: str = "Shorten API"
@@ -21,5 +24,18 @@ class Settings(BaseSettings):
     PG_DATABASE_NAME: str
     PG_HOST: str
 
+    # Auth0 details
+    AUTH0_DOMAIN: str
+    AUTH0_CLIENT_ID: str
+    AUTH0_CLIENT_SECRET: str
+    AUTH0_ALGORITHMS: str
+    AUTH0_API_AUDIENCE: str
+    AUTH0_ISSUER: str
 
-settings = Settings()
+
+@lru_cache()
+def get_settings():
+    return Settings()
+
+
+settings = get_settings()
