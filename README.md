@@ -170,7 +170,3 @@ Contributions are welcome! Please open an issue or submit a pull request to the 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-Feel free to customize this template with any additional information or adjustments that fit your project's specifics.
