@@ -15,7 +15,6 @@ async def lifespan(app: FastAPI):
     # Connect to the database
     await db.connect()
     # Create tables
-    print("CREATING TABLES !!!")
     await create_tables(database=db)
 
     try:
