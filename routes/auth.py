@@ -6,7 +6,7 @@ import requests
 from settings import settings
 from utils import VerifyToken
 
-router = APIRouter(prefix=f"{settings.BASE_URL}/auth", tags=["auth"])
+router = APIRouter(prefix=f"{settings.BASE_URL_PATH}/auth", tags=["auth"])
 auth = VerifyToken()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.TOKEN_URI}")
 bearer_scheme = HTTPBearer()
@@ -42,8 +42,3 @@ def get_access_token(code:str):
     headers = {"content-type": "application/x-www-form-urlencoded"}
     response = requests.post(f"https://{settings.AUTH0_DOMAIN}/oauth/token", payload, headers=headers)
     return response.json()
-
-# Test Endpoint
-@router.get("/private")
-def private(credentials: HTTPAuthorizationCredentials = Depends(auth.verify)):
-    return {"message": "This is a protected endpoint", "user": credentials}
