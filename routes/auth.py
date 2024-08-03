@@ -47,7 +47,7 @@ def logout():
     )
 
 
-@router.get("/token")
+@router.get("/token", include_in_schema=False)
 def get_access_token(code: str):
     """
     Exchanges the authorization code for an access token.

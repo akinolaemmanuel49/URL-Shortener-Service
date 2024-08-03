@@ -22,7 +22,7 @@ bearer_scheme = HTTPBearer()
 
 @router.post("/")
 async def shorten_url(
-    original_url: HttpUrl,
+    url: HttpUrl,
     credentials: HTTPAuthorizationCredentials = Depends(auth.verify),
 ) -> APICreateResponse:
     """
@@ -36,7 +36,7 @@ async def shorten_url(
         APICreateResponse: A response containing the shortened URL, the original URL, and a flag indicating if the URL was newly created.
     """
     # Initialize URLShortener with the provided URL and the authenticated user's ID
-    shortener = URLShortener(original_url=original_url, owner_id=credentials["sub"])
+    shortener = URLShortener(original_url=url, owner_id=credentials["sub"])
 
     # Generate a unique key and store the URL in the database
     key, created = await shortener.shorten_url()
@@ -46,7 +46,7 @@ async def shorten_url(
 
     # Return the response with the shortened URL details
     return APICreateResponse(
-        shortened_url=shortened_url, original_url=original_url, created=created
+        shortened_url=shortened_url, original_url=url, created=created
     )
 
 
