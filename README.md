@@ -1,6 +1,6 @@
 # URL Shortener Service
 
-A URL shortener service built with FastAPI, PostgreSQL, and Auth0 for authentication. This service allows users to shorten URLs, retrieve original URLs, list their shortened URLs, and delete them.
+A URL shortener service built with FastAPI, PostgreSQL, and Auth0 for authentication. This service allows users to shorten URLs, retrieve the original URLs, list their shortened URLs, and delete them.
 
 ## Features
 
@@ -8,7 +8,7 @@ A URL shortener service built with FastAPI, PostgreSQL, and Auth0 for authentica
 - Retrieve the original URL from a shortened key.
 - List all shortened URLs with pagination.
 - Delete shortened URLs.
-- Authentication using Auth0.
+- Authentication using JWT from client application.
 
 ## Table of Contents
 
@@ -94,20 +94,6 @@ pip install -r requirements.txt
     Navigate to `http://localhost:8000` in your browser. You can use the provided endpoints to interact with the service.
 
 ## API Documentation
-
-### Authentication
-
-- **Login:** Redirects to Auth0 for authentication.
-
-    `GET /api/auth/login`
-
-- **Logout:** Logs the user out and redirects to a specified URL.
-
-    `GET /api/auth/logout`
-
-- **Get Access Token:** Exchange authorization code for an access token.
-
-    `GET /api/auth/token`
 
 ### Shorten URL
 
