@@ -52,28 +52,40 @@ async def fetch_multiple_urls(owner_id: str, limit: int = 10, offset: int = 0):
         offset (int, optional): The number of records to skip. Defaults to 0.
 
     Returns:
-        List[APIReadResponse]: A list of APIReadResponse objects containing shortened and original URLs.
+        Tuple[int, List[APIReadResponse]]: A tuple where the first element is the total count of matching rows,
+                                           and the second element is a list of APIReadResponse objects containing
+                                           shortened and original URLs.
     """
-    query = """
+    count_query = """
+        SELECT COUNT(*) AS total_count 
+        FROM urls 
+        WHERE owner_id = :owner_id
+    """
+
+    records_query = """
         SELECT key, original_url 
         FROM urls 
         WHERE owner_id = :owner_id 
-        ORDER BY created_at
+        ORDER BY created_at DESC
         LIMIT :limit OFFSET :offset 
     """
-    values = {"owner_id": owner_id, "limit": limit, "offset": offset}
-    records = await db.fetch_all(query=query, values=values)
 
-    result = []
-    for record in records:
-        result.append(
-            APIReadResponse(
-                shortened_url=f"{settings.SHORTENED_URL_BASE}{record['key']}",
-                original_url=record["original_url"],
-            )
+    count_values = {"owner_id": owner_id}
+    record_values = {"owner_id": owner_id, "limit": limit, "offset": offset}
+    count_result = await db.fetch_one(query=count_query, values=count_values)
+    total_count: int = count_result["total_count"]
+
+    records = await db.fetch_all(query=records_query, values=record_values)
+
+    result = [
+        APIReadResponse(
+            shortened_url=f"{settings.SHORTENED_URL_BASE}{record['key']}",
+            original_url=record["original_url"],
         )
+        for record in records
+    ]
 
-    return result
+    return total_count, result
 
 
 async def create_record(original_url: HttpUrl, owner_id: str, unique_key: str):

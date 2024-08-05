@@ -1,6 +1,6 @@
-from typing import List
+from typing import Dict, List, Union
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
@@ -22,7 +22,7 @@ bearer_scheme = HTTPBearer()
 
 @router.post("/")
 async def shorten_url(
-    url: HttpUrl,
+    url: HttpUrl = Query(),
     credentials: HTTPAuthorizationCredentials = Depends(auth.verify),
 ) -> APICreateResponse:
     """
@@ -53,9 +53,9 @@ async def shorten_url(
 @router.get("/")
 async def list_shortened_urls(
     credentials: HTTPAuthorizationCredentials = Depends(auth.verify),
-    limit: int = 10,
-    offset: int = 0,
-) -> List[APIReadResponse]:
+    limit: int = Query(10, gt=0),
+    offset: int = Query(0, ge=0),
+) -> Dict[str, Union[int, List[APIReadResponse]]]:
     """
     List all shortened URLs for the authenticated user with pagination support.
 
@@ -65,12 +65,23 @@ async def list_shortened_urls(
         offset (int): The starting point for pagination (default is 0).
 
     Returns:
-        List[APIReadResponse]: A list of responses containing details of shortened URLs.
+        Dict[str, Union[int, List[APIReadResponse]]]: A dictionary containing total count and a list of
+        responses with shortened URLs.
     """
-    # Fetch shortened URLs for the authenticated user with pagination
-    return await fetch_multiple_urls(
-        owner_id=credentials["sub"], limit=limit, offset=offset
-    )
+    try:
+        total_count, urls = await fetch_multiple_urls(
+            owner_id=credentials["sub"], limit=limit, offset=offset
+        )
+        # Convert URL instances to strings if necessary
+        response_data = {
+            "total": total_count,
+            "urls": [
+                url.model_dump() for url in urls
+            ],  # Ensure URLs are serialized to dicts
+        }
+        return response_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{key}")
