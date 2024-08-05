@@ -99,13 +99,9 @@ pip install -r requirements.txt
 
 - **Endpoint:** `POST /api/shorten/`
 
-- **Request Body:**
+- **Query Parameter:**
 
-    ```json
-    {
-        "original_url": "http://example.com"
-    }
-    ```
+    - `url` (required): The original URL to be shortened.
 
 - **Response:**
 
@@ -129,12 +125,16 @@ pip install -r requirements.txt
 - **Response:**
 
     ```json
-    [
-        {
-            "shortened_url": "http://localhost:8000/abc123",
-            "original_url": "http://example.com"
-        }
-    ]
+    {
+        "total": 1,
+        "urls": [
+            {
+                "shortened_url": "http://localhost:8000/abc123",
+                "original_url": "http://example.com"
+            }
+        ]
+    }
+    
     ```
 
 ### Delete Shortened URL
