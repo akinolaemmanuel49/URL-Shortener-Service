@@ -25,18 +25,20 @@ async def create_tables(database: Database):
     CREATE TABLE IF NOT EXISTS urls (
         key VARCHAR(7) PRIMARY KEY, 
         original_url TEXT NOT NULL, 
-        owner_id VARCHAR(255) NOT NULL, 
+        owner_id VARCHAR(255) UNIQUE NOT NULL, 
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, 
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
     """
 
-    # SQL query to create the 'urls_ip' table if it does not exist
-    url_ip_table_query = """
-    CREATE TABLE IF NOT EXISTS url_ip (
+    # SQL query to create the 'metrics' table if it does not exist
+    metrics_table_query = """
+    CREATE TABLE IF NOT EXISTS metrics (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
         key VARCHAR(7) NOT NULL REFERENCES urls(key), 
+        owner_id VARCHAR(255) NOT NULL REFERENCES urls(owner_id), 
         client_ip VARCHAR(45) NOT NULL, 
+        response_time INTEGER NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
     """
@@ -44,7 +46,7 @@ async def create_tables(database: Database):
     try:
         # Execute the queries to create the tables
         await database.execute(query=urls_table_query)
-        await database.execute(query=url_ip_table_query)
+        await database.execute(query=metrics_table_query)
     except Exception as e:
         print(f"An error occurred: {e}")
 
