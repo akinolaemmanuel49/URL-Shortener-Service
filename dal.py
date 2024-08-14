@@ -211,11 +211,11 @@ async def count_hits(key: str):
     Args:
         key (str): The shortened URL key.
     """
-    _query = """SELECT COUNT(*) AS total_number_of_hits FROM urls WHERE key = :key;"""
+    _query = """SELECT COUNT(*) AS total_number_of_hits FROM metrics WHERE key = :key;"""
     _values = {"key": key}
 
     try:
-        count_result = await db.execute(query=_query, values=_values)
+        count_result = await db.fetch_one(query=_query, values=_values)
         total_number_of_hits: int = count_result["total_number_of_hits"]
         return total_number_of_hits
     except Exception as e:
