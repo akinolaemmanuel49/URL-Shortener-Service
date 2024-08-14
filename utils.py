@@ -1,7 +1,7 @@
-import hashlib
-from typing import Optional, Tuple
 import jwt
+from typing import Optional, Tuple
 
+import base62
 from fastapi import HTTPException, status, Depends
 from fastapi.security import SecurityScopes, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import HttpUrl
@@ -132,8 +132,8 @@ class URLShortener:
             owner_id (str): The owner ID to include in the hash.
 
         Returns:
-            str: Hashed URL string of length 6.
+            str: Hashed URL string of length 7.
         """
-        string = str(original_url + owner_id)
-        hash_object = hashlib.md5(string.encode())
-        return hash_object.hexdigest()[:6]
+        key = str(original_url + owner_id).encode("utf-8")
+        result = base62.encodebytes(key)[:7]
+        return result
