@@ -35,8 +35,8 @@ async def create_tables(database: Database):
     metrics_table_query = """
     CREATE TABLE IF NOT EXISTS metrics (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
-        key VARCHAR(7) NOT NULL REFERENCES urls(key), 
-        owner_id VARCHAR(255) NOT NULL REFERENCES urls(owner_id), 
+        key VARCHAR(7) NOT NULL REFERENCES urls(key) ON DELETE CASCADE, 
+        owner_id VARCHAR(255) NOT NULL REFERENCES urls(owner_id) ON DELETE CASCADE, 
         client_ip VARCHAR(45) NOT NULL, 
         response_time INTEGER NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
