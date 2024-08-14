@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from settings import settings
-from database import database as db, create_tables
+from database import create_triggers, database as db, create_tables
 from routes.info import router as info_router
 from routes.auth import router as auth_router
 from routes.url_shortener import router as url_shortener_router
@@ -22,8 +22,12 @@ async def lifespan(app: FastAPI):
     """
     # Connect to the database
     await db.connect()
+
     # Create tables in the database
     await create_tables(database=db)
+
+    # Create triggers on tables in the database
+    await create_triggers(database=db)
 
     try:
         # Provide control back to the application
