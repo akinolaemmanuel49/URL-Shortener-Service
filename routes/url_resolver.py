@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 
 from dal import set_metrics
 from utils import URLShortener
+from logger import logger
 
 # Initialize the API router
 router = APIRouter()
@@ -25,11 +26,14 @@ async def resolve_url(request: Request, key: str) -> RedirectResponse:
     """
     # Measure the start time
     start_time = time.time()
-
-    # Retrieve the original URL associated with the provided key
-    original_url = await URLShortener.retrieve_original_url(key=key)
-    if not original_url:
-        return Response("URL not found", status_code=404)
+    
+    try:
+        # Retrieve the original URL associated with the provided key
+        original_url = await URLShortener.retrieve_original_url(key=key)
+        if not original_url:
+            return Response("URL not found", status_code=404)
+    except Exception as e:
+        logger.error(e)
 
     # Get the client IP address
     client_ip = request.client.host
@@ -69,10 +73,9 @@ async def resolve_url(request: Request, key: str) -> RedirectResponse:
     try:
         # Store metrics in a database
         await set_metrics(key=key, **metrics)
+        logger.info("Saved metrics to database")
     except Exception as e:
-        print(e)
-
-    
+        logger.error(e)
 
     # Redirect the client to the original URL
     return RedirectResponse(url=original_url)
