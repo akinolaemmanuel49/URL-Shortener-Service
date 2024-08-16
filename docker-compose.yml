@@ -1,0 +1,36 @@
+services:
+  api:
+    build:
+      dockerfile: Dockerfile
+    container_name: shorten
+    env_file:
+      - ".env"
+    ports:
+      - "8000:8000"
+    networks:
+      - shared
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    env_file:
+      - ".env"
+    environment:
+      POSTGRES_DB: ${PG_DATABASE_NAME}
+      POSTGRES_USER: ${PG_USERNAME}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - shared
+
+networks:
+  shared:
+    driver: bridge
+
+volumes:
+  postgres_data:

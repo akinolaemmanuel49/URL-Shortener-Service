@@ -152,3 +152,4 @@ cython_debug/
 #.idea/
 
 docs
+*.log.[0-9]*

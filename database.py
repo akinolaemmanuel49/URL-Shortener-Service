@@ -25,9 +25,8 @@ async def create_tables(database: Database):
     CREATE TABLE IF NOT EXISTS urls (
         key VARCHAR(7) PRIMARY KEY, 
         original_url TEXT NOT NULL, 
-        owner_id VARCHAR(255) UNIQUE NOT NULL, 
+        owner_id VARCHAR(255) NOT NULL, 
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, 
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
     """
 
@@ -36,7 +35,7 @@ async def create_tables(database: Database):
     CREATE TABLE IF NOT EXISTS metrics (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(), 
         key VARCHAR(7) NOT NULL REFERENCES urls(key) ON DELETE CASCADE, 
-        owner_id VARCHAR(255) NOT NULL REFERENCES urls(owner_id) ON DELETE CASCADE, 
+        owner_id VARCHAR(255) NOT NULL, 
         client_ip VARCHAR(45) NOT NULL, 
         response_time INTEGER NOT NULL,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -110,15 +109,3 @@ class Url(BaseModel):
     original_url: HttpUrl
     owner_id: str
 
-
-class UrlMetrics(Url):
-    """
-    Pydantic model for URL data with metrics.
-
-    Inherits from the Url model and includes additional information.
-
-    Attributes:
-        hits (int): The number of times the URL has been resolved.
-    """
-
-    hits: int
