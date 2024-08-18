@@ -2,13 +2,13 @@ services:
   api:
     build:
       dockerfile: Dockerfile
-    container_name: shorten
+    container_name: shorten_api
     env_file:
       - ".env"
     ports:
       - "8000:8000"
     networks:
-      - shared
+      - shorten-api_shared
     depends_on:
       - db
       - cache
@@ -27,7 +27,7 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - shared
+      - shorten-api_shared
 
   cache:
     container_name: redis_cache
@@ -40,11 +40,11 @@ services:
     env_file:
       - ".env"
     networks:
-      - shared
+      - shorten-api_shared
 
 networks:
-  shared:
-    driver: bridge
+  shorten-api_shared:
+    external: true
 
 volumes:
   postgres_data:
