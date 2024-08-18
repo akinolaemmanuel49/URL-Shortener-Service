@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List
 from pydantic import HttpUrl
 from databases.interfaces import Record
 
@@ -239,6 +239,34 @@ async def count_hits(key: str) -> int:
     except Exception as e:
         logger.error(f"An error occurred while counting hits: {e}")
         return 0
+
+
+async def count_top_five_hits(owner_id: str) -> Dict[str, int]:
+    """
+    Retrieve the top five most hit shortened URLs for a specific owner.
+
+    Args:
+        owner_id (str): The ID of the owner whose URLs are being queried.
+
+    Returns:
+        Dict[str, int]: A dictionary where keys are shortened URL keys and values are the number of hits.
+    """
+    _query = """
+    SELECT key, COUNT(*) AS total_hits
+    FROM metrics
+    WHERE owner_id = :owner_id
+    GROUP BY key
+    ORDER BY total_hits DESC
+    LIMIT 5
+    """
+
+    try:
+        results = await db.fetch_all(query=_query, values={"owner_id": owner_id})
+        top_hits = {result["key"]: result["total_hits"] for result in results}
+        return top_hits
+    except Exception as e:
+        logger.error(f"An error occurred while counting the top five hits: {e}")
+        return {}
 
 
 async def count_unique_ips(key: str) -> int:

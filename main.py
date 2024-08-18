@@ -5,6 +5,7 @@ from settings import settings
 from database import create_triggers, database as db, create_tables
 from routes.info import router as info_router
 from routes.auth import router as auth_router
+from routes.metrics import router as metrics_router
 from routes.url_shortener import router as url_shortener_router
 from routes.url_resolver import router as url_resolver_router
 
@@ -43,5 +44,6 @@ app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 # Include routers for different endpoints
 app.include_router(info_router)  # Router for general information endpoints
 app.include_router(auth_router)  # Router for authentication-related endpoints
+app.include_router(metrics_router)  # Router for metrics
 app.include_router(url_shortener_router)  # Router for URL shortening endpoints
 app.include_router(url_resolver_router)  # Router for URL resolving endpoints
