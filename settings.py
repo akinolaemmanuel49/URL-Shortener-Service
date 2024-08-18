@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     PG_PASSWORD: str
     PG_DATABASE_NAME: str
     PG_HOST: str
+    PG_PORT: int = 5432
+
+    # Cache information
+    CACHE_HOST: str
+    CACHE_PORT: int = 6379
+    CACHE_USERNAME: str
+    CACHE_PASSWORD: str
+    CACHE_DB: str
 
     # Auth0 details
     AUTH0_DOMAIN: str

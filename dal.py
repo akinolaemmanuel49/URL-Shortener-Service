@@ -1,13 +1,15 @@
-from typing import Optional
+from typing import Optional, Tuple, List
 from pydantic import HttpUrl
 from databases.interfaces import Record
 
 from database import database as db
 from schemas.url import APIReadResponse
 from settings import settings
+from cache import cache
+from logger import logger
 
 
-async def fetch_key(original_url: HttpUrl, owner_id: str) -> Record:
+async def fetch_key(original_url: HttpUrl, owner_id: str) -> Optional[Record]:
     """
     Retrieve the key associated with a given original URL and owner ID.
 
@@ -16,7 +18,7 @@ async def fetch_key(original_url: HttpUrl, owner_id: str) -> Record:
         owner_id (str): The ID of the owner.
 
     Returns:
-        Record: The database record containing the key.
+        Optional[Record]: The database record containing the key if found, None otherwise.
     """
     _query = """SELECT key FROM urls WHERE original_url = :original_url AND owner_id = :owner_id"""
     _values = {"original_url": str(original_url), "owner_id": owner_id}
@@ -25,7 +27,8 @@ async def fetch_key(original_url: HttpUrl, owner_id: str) -> Record:
         result = await db.fetch_one(query=_query, values=_values)
         return result
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred while fetching the key: {e}")
+        return None
 
 
 async def fetch_original_url(key: str) -> Optional[HttpUrl]:
@@ -42,16 +45,36 @@ async def fetch_original_url(key: str) -> Optional[HttpUrl]:
     _values = {"key": key}
 
     try:
-        result = await db.fetch_one(query=_query, values=_values)
-        if result:
-            return HttpUrl(result["original_url"])
-        else:
-            return None
+        await cache.connect()
+
+        try:
+            cached_result = await cache.get_value(key)
+            # If cache hit return fetch from cache
+            if cached_result:
+                logger.info(f"Cache hit on key: {key}")
+                return HttpUrl(cached_result)
+
+            # If cache miss fetch from database, then save to cache
+            logger.info(f"Cache miss on key: {key}")
+            logger.info("Fetching from datbase")
+            result = await db.fetch_one(query=_query, values=_values)
+            if result:
+                await cache.set_value(key=key, value=str(result["original_url"]))
+                return HttpUrl(result["original_url"])
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"An error occurred while fetching the original URL: {e}")
+
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred while connecting to redis server: {e}")
+    finally:
+        await cache.disconnect()
 
 
-async def fetch_multiple_urls(owner_id: str, limit: int = 10, offset: int = 0):
+async def fetch_multiple_urls(
+    owner_id: str, limit: int = 10, offset: int = 0
+) -> Tuple[int, List[APIReadResponse]]:
     """
     Fetch multiple URLs associated with a given owner ID, with pagination.
 
@@ -65,20 +88,10 @@ async def fetch_multiple_urls(owner_id: str, limit: int = 10, offset: int = 0):
                                            and the second element is a list of APIReadResponse objects containing
                                            shortened and original URLs.
     """
-    _count_query = """
-        SELECT COUNT(*) AS total_count 
-        FROM urls 
-        WHERE owner_id = :owner_id
-    """
-
-    _records_query = """
-        SELECT key, original_url 
-        FROM urls 
-        WHERE owner_id = :owner_id 
-        ORDER BY created_at DESC
-        LIMIT :limit OFFSET :offset 
-    """
-
+    _count_query = (
+        """SELECT COUNT(*) AS total_count FROM urls WHERE owner_id = :owner_id"""
+    )
+    _records_query = """SELECT key, original_url FROM urls WHERE owner_id = :owner_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset"""
     _count_values = {"owner_id": owner_id}
     _record_values = {"owner_id": owner_id, "limit": limit, "offset": offset}
 
@@ -98,10 +111,13 @@ async def fetch_multiple_urls(owner_id: str, limit: int = 10, offset: int = 0):
 
         return total_count, result
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred while fetching multiple URLs: {e}")
+        return 0, []
 
 
-async def create_record(original_url: HttpUrl, owner_id: str, unique_key: str):
+async def create_record(
+    original_url: HttpUrl, owner_id: str, unique_key: str
+) -> Tuple[str, bool]:
     """
     Create a new URL record in the database.
 
@@ -113,7 +129,6 @@ async def create_record(original_url: HttpUrl, owner_id: str, unique_key: str):
     Returns:
         Tuple[str, bool]: The unique key and a boolean indicating if a new record was created.
     """
-    # Check if the URL already exists for the owner
     _query_select = """SELECT key FROM urls WHERE original_url = :original_url AND owner_id = :owner_id"""
     _values_select = {"original_url": str(original_url), "owner_id": owner_id}
 
@@ -121,10 +136,8 @@ async def create_record(original_url: HttpUrl, owner_id: str, unique_key: str):
         existing_url = await db.fetch_one(query=_query_select, values=_values_select)
 
         if existing_url:
-            # If the URL exists, return the existing shortened key
-            return (str(existing_url["key"]), False)
+            return str(existing_url["key"]), False
 
-        # Otherwise, store the key and URL value in the database
         _query_insert = """INSERT INTO urls (key, original_url, owner_id) VALUES (:key, :original_url, :owner_id)"""
         _values_insert = {
             "key": unique_key,
@@ -132,14 +145,10 @@ async def create_record(original_url: HttpUrl, owner_id: str, unique_key: str):
             "owner_id": owner_id,
         }
 
-        try:
-            await db.execute(query=_query_insert, values=_values_insert)
-            return (unique_key, True)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
+        await db.execute(query=_query_insert, values=_values_insert)
+        return unique_key, True
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred while creating a record: {e}")
 
 
 async def remove_record(key: str, owner_id: str) -> bool:
@@ -153,7 +162,6 @@ async def remove_record(key: str, owner_id: str) -> bool:
     Returns:
         bool: True if the record was deleted, False otherwise.
     """
-    # Check if the URL exists in the database
     _query = """SELECT key, original_url FROM urls WHERE key = :key AND owner_id = :owner_id"""
     _values = {"key": key, "owner_id": owner_id}
 
@@ -161,24 +169,31 @@ async def remove_record(key: str, owner_id: str) -> bool:
         existing_url = await db.fetch_one(query=_query, values=_values)
 
         if existing_url:
-            # If the URL exists, delete it
-            _query = """DELETE FROM urls WHERE key = :key"""
-            _values = {"key": key}
+            _query_delete = """DELETE FROM urls WHERE key = :key"""
+            _values_delete = {"key": key}
 
             try:
-                await db.execute(query=_query, values=_values)
+                await db.execute(query=_query_delete, values=_values_delete)
                 return True
             except Exception as e:
-                print(f"An error occurred: {e}")
+                logger.error(f"An error occurred while deleting the record: {e}")
+                return False
 
         return False
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred while removing a record: {e}")
 
 
 async def set_metrics(key: str, **kwargs):
-    _query_select = """SELECT owner_id FROM urls WHERE key = :key;"""
+    """
+    Set metrics related to the shortened URL.
+
+    Args:
+        key (str): The shortened URL key.
+        **kwargs: Additional keyword arguments, including 'client_ip' and 'response_time'.
+    """
+    _query_select = """SELECT owner_id FROM urls WHERE key = :key"""
     _values_select = {"key": key}
 
     try:
@@ -187,31 +202,34 @@ async def set_metrics(key: str, **kwargs):
         if result:
             owner_id = str(result["owner_id"])
 
-            _query_insert = """INSERT INTO metrics (key, owner_id, client_ip, response_time) VALUES (:key, :owner_id, :client_ip, :response_time);"""
+            _query_insert = """INSERT INTO metrics (key, owner_id, client_ip, response_time) VALUES (:key, :owner_id, :client_ip, :response_time)"""
             _values_insert = {
                 "key": key,
                 "owner_id": owner_id,
-                "client_ip": kwargs["client_ip"],
-                "response_time": kwargs["response_time"],
+                "client_ip": kwargs.get("client_ip"),
+                "response_time": kwargs.get("response_time"),
             }
 
             try:
                 await db.execute(query=_query_insert, values=_values_insert)
             except Exception as e:
-                print(f"An error occurred: {e}")
+                logger.error(f"An error occurred while setting metrics: {e}")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred while fetching owner_id for metrics: {e}")
 
 
-async def count_hits(key: str):
+async def count_hits(key: str) -> int:
     """
-    Counts the number of times a shortened URL was resolved
+    Counts the number of times a shortened URL was resolved.
 
     Args:
         key (str): The shortened URL key.
+
+    Returns:
+        int: The total number of hits for the given key.
     """
-    _query = """SELECT COUNT(*) AS total_number_of_hits FROM metrics WHERE key = :key;"""
+    _query = """SELECT COUNT(*) AS total_number_of_hits FROM metrics WHERE key = :key"""
     _values = {"key": key}
 
     try:
@@ -219,16 +237,71 @@ async def count_hits(key: str):
         total_number_of_hits: int = count_result["total_number_of_hits"]
         return total_number_of_hits
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An error occurred while counting hits: {e}")
+        return 0
 
 
-async def count_unique_ips(key: str):
-    pass
+async def count_unique_ips(key: str) -> int:
+    """
+    Counts the number of unique IP addresses that accessed a shortened URL.
+
+    Args:
+        key (str): The shortened URL key.
+
+    Returns:
+        int: The number of unique IPs.
+    """
+    _query = """SELECT COUNT(DISTINCT client_ip) AS unique_ip_count FROM metrics WHERE key = :key"""
+    _values = {"key": key}
+
+    try:
+        count_result = await db.fetch_one(query=_query, values=_values)
+        unique_ip_count: int = count_result["unique_ip_count"]
+        return unique_ip_count
+    except Exception as e:
+        logger.error(f"An error occurred while counting unique IPs: {e}")
+        return 0
 
 
-async def evaluate_performance(key: str):
-    pass
+async def evaluate_performance(key: str) -> Optional[dict]:
+    """
+    Evaluate performance metrics for a shortened URL.
+
+    Args:
+        key (str): The shortened URL key.
+
+    Returns:
+        Optional[dict]: A dictionary with performance metrics or None if an error occurs.
+    """
+    try:
+        total_hits = await count_hits(key)
+        unique_ips = await count_unique_ips(key)
+
+        performance = {"total_hits": total_hits, "unique_ips": unique_ips}
+
+        return performance
+    except Exception as e:
+        logger.error(f"An error occurred while evaluating performance: {e}")
+        return None
 
 
-async def get_metrics(key: str):
-    pass
+async def get_metrics(key: str) -> Optional[dict]:
+    """
+    Retrieve metrics for a shortened URL.
+
+    Args:
+        key (str): The shortened URL key.
+
+    Returns:
+        Optional[dict]: A dictionary with metrics or None if an error occurs.
+    """
+    try:
+        hits = await count_hits(key)
+        unique_ips = await count_unique_ips(key)
+
+        metrics = {"hits": hits, "unique_ips": unique_ips}
+
+        return metrics
+    except Exception as e:
+        logger.error(f"An error occurred while retrieving metrics: {e}")
+        return None

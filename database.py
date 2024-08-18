@@ -26,7 +26,7 @@ async def create_tables(database: Database):
         key VARCHAR(7) PRIMARY KEY, 
         original_url TEXT NOT NULL, 
         owner_id VARCHAR(255) NOT NULL, 
-        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, 
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
     """
 

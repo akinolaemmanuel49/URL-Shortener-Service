@@ -11,6 +11,7 @@ services:
       - shared
     depends_on:
       - db
+      - cache
 
   db:
     image: postgres:15
@@ -28,9 +29,23 @@ services:
     networks:
       - shared
 
+  cache:
+    container_name: redis_cache
+    image: redis
+    ports: 
+      - "6379:6379"
+    volumes:
+      - ./tools/docker/redis_data:/data
+    command: "redis-server /data/redis.conf"
+    env_file:
+      - ".env"
+    networks:
+      - shared
+
 networks:
   shared:
     driver: bridge
 
 volumes:
   postgres_data:
+  redis_data:
