@@ -8,10 +8,15 @@ from fastapi.security import (
 )
 from pydantic import HttpUrl
 
-from schemas.url import APICreateResponse, APIDeleteResponse, APIReadResponse
+from schemas.url import (
+    APICreateResponse,
+    APIDeleteResponse,
+    APIReadOriginalURLResponse,
+    APIReadResponse,
+)
 from settings import settings
 from utils import VerifyToken, URLShortener
-from dal import fetch_multiple_urls, remove_record
+from dal import fetch_multiple_urls, fetch_original_url, remove_record
 
 # Initialize the API router for URL shortening endpoints
 router = APIRouter(prefix=f"{settings.BASE_URL_PATH}/shorten", tags=["url shortener"])
@@ -104,3 +109,12 @@ async def delete_shortened_url(
 
     # Return a response indicating successful deletion
     return APIDeleteResponse()
+
+
+@router.get("/{key}")
+async def get_original_url(
+    key: str,
+    credentials: HTTPAuthorizationCredentials = Depends(auth.verify),
+) -> APIReadOriginalURLResponse:
+    original_url = await fetch_original_url(key=key)
+    return APIReadOriginalURLResponse(original_url=original_url)

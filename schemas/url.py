@@ -1,17 +1,29 @@
 from pydantic import BaseModel, HttpUrl
 
 
-class APIReadResponse(BaseModel):
+class APIReadOriginalURLResponse(BaseModel):
     """
     Represents the response for reading a URL.
 
     Attributes:
-        shortened_url (HttpUrl): The shortened version of the original URL.
         original_url (HttpUrl): The original URL before shortening.
     """
 
-    shortened_url: HttpUrl  # The shortened version of the original URL.
     original_url: HttpUrl  # The original URL before shortening.
+
+
+class APIReadResponse(APIReadOriginalURLResponse):
+    """
+    Represents the response for reading a URL.
+
+    Inherits Attributes:
+        original_url (HttpUrl): The original URL before shortening.
+
+    Additional Attributes:
+        shortened_url (HttpUrl): The shortened version of the original URL.
+    """
+
+    shortened_url: HttpUrl  # The shortened version of the original URL.
 
 
 class APICreateResponse(BaseModel):
