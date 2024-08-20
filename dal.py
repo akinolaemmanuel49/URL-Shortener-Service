@@ -219,6 +219,54 @@ async def set_metrics(key: str, **kwargs):
         logger.error(f"An error occurred while fetching owner_id for metrics: {e}")
 
 
+async def get_average_resolution_time_by_key(key: str) -> int:
+    """
+    Calculate the average resolution time for a specific shortened URL key.
+
+    Args:
+        key (str): The shortened URL key.
+
+    Returns:
+        int: The average resolution time in milliseconds.
+    """
+
+    _query_select = """SELECT AVG(response_time) FROM metrics WHERE key = :key"""
+    _values_select = {"key": key}
+
+    try:
+        result = await db.execute(query=_query_select, values=_values_select)
+        return result
+    except Exception as e:
+        logger.error(
+            f"An error occurred while calculating average resolution time for key => {key}: {e}"
+        )
+
+
+async def get_average_resolution_time_by_owner(owner_id: str) -> int:
+    """
+    Calculate the average resolution time for all URLs owned by a specific user.
+
+    Args:
+        owner_id (str): The ID of the owner.
+
+    Returns:
+        int: The average resolution time in milliseconds.
+    """
+
+    _query_select = (
+        """SELECT AVG(response_time) FROM metrics WHERE owner_id = :owner_id"""
+    )
+    _values_select = {"owner_id": owner_id}
+
+    try:
+        result = await db.execute(query=_query_select, values=_values_select)
+        return result
+    except Exception as e:
+        logger.error(
+            f"An error occurred while calculating average resolution time for a user account: {e}"
+        )
+
+
 async def count_hits(key: str) -> int:
     """
     Counts the number of times a shortened URL was resolved.
@@ -304,8 +352,13 @@ async def evaluate_performance(key: str) -> Optional[dict]:
     try:
         total_hits = await count_hits(key)
         unique_ips = await count_unique_ips(key)
+        avg_resolution_time = await get_average_resolution_time_by_key(key=key)
 
-        performance = {"total_hits": total_hits, "unique_ips": unique_ips}
+        performance = {
+            "total_hits": total_hits,
+            "unique_ips": unique_ips,
+            "avg_resolution_time": avg_resolution_time,
+        }
 
         return performance
     except Exception as e:
