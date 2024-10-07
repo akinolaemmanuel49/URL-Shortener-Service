@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from settings import settings
-from database import create_triggers, database as db, create_tables
 from routes.info import router as info_router
 from routes.auth import router as auth_router
 from routes.metrics import router as metrics_router
@@ -12,6 +11,7 @@ from routes.url_resolver import router as url_resolver_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from database import create_triggers, database as db, create_tables
     """
     Manage the lifespan of the FastAPI application, including connecting to and disconnecting from the database.
 

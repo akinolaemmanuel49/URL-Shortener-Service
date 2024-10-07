@@ -1,10 +1,17 @@
 from fastapi import APIRouter
 
+from dal import count_hits
 from schemas.info import Info
 from settings import settings
 
 # Initialize the API router with a base path and tag
 router = APIRouter(prefix="", tags=["info"])
+
+# Testing route
+@router.get("/info/hits/{key}")
+async def get_hit_count(key: str):
+    count = await count_hits(key=key)
+    return count
 
 
 @router.get(f"{settings.BASE_URL_PATH}/info")
