@@ -67,6 +67,12 @@ pip install -r requirements.txt
     PG_DATABASE_NAME=database_name
     PG_HOST=localhost
 
+    CACHE_HOST=localhost
+    CACHE_PORT=6379
+    CACHE_USERNAME=username
+    CACHE_PASSWORD=password
+    CACHE_DB='0'
+
     AUTH0_DOMAIN=your-auth0-domain
     AUTH0_CLIENT_ID=your-auth0-client-id
     AUTH0_CLIENT_SECRET=your-auth0-client-secret
