@@ -59,13 +59,17 @@ class Settings(BaseSettings):
     CACHE_PASSWORD: str
     CACHE_DB: str
 
-    # Auth0 details
+    # Auth0 information
     AUTH0_DOMAIN: str
     AUTH0_CLIENT_ID: str
     AUTH0_CLIENT_SECRET: str
     AUTH0_ALGORITHMS: str
     AUTH0_API_AUDIENCE: str
     AUTH0_ISSUER: str
+
+    # Square information
+    SQUARE_ACCESS_TOKEN: str
+    SQUARE_ENVIRONMENT: str
 
 
 @lru_cache()

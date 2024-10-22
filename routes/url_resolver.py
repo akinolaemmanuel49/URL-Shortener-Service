@@ -1,7 +1,7 @@
 import requests
 import time
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 
 from dal import set_metrics
@@ -26,7 +26,7 @@ async def resolve_url(request: Request, key: str) -> RedirectResponse:
     """
     # Measure the start time
     start_time = time.time()
-    
+
     try:
         # Retrieve the original URL associated with the provided key
         original_url = await URLShortener.retrieve_original_url(key=key)
