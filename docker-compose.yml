@@ -1,7 +1,9 @@
 services:
   api:
     build:
+      context: .
       dockerfile: Dockerfile
+    image: shorten_api:1.0
     container_name: shorten_api
     env_file:
       - ".env"
