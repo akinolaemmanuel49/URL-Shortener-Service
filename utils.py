@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import jwt
 from typing import Optional, Tuple
 
@@ -5,9 +6,16 @@ import base62
 from fastapi import HTTPException, status, Depends
 from fastapi.security import SecurityScopes, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import HttpUrl
+from square.client import Client
 
-from settings import get_settings
-from dal import create_record, fetch_original_url
+from settings import get_settings, Settings
+from dal import (
+    create_record,
+    fetch_original_url,
+    get_subscription,
+    get_url_count,
+    subscribe,
+)
 
 
 class UnauthorizedException(HTTPException):
@@ -24,11 +32,20 @@ class UnauthenticatedException(HTTPException):
         )
 
 
+class LimitExceededException(Exception):
+    def __init__(
+        self,
+        detail="You have reached your URL limit for your current subscription plan",
+    ):
+        """Custom exception for Limit exceeded."""
+        super().__init__(status.HTTP_403_FORBIDDEN, detail=detail)
+
+
 class VerifyToken:
     """Class to verify JWT tokens using PyJWT."""
 
     def __init__(self):
-        self.config = get_settings()
+        self.config: Settings = get_settings()
 
         # URL to retrieve JSON Web Key Set (JWKS) from Auth0
         jwks_url = f"https://{self.config.AUTH0_DOMAIN}/.well-known/jwks.json"
@@ -97,6 +114,25 @@ class URLShortener:
         Returns:
             Tuple[str, bool]: The unique key and a boolean indicating whether a new record was created.
         """
+        plan_limits = {"free": 10, "standard": 100, "premium": 1000}
+
+        subscription = await get_subscription(owner_id=self.owner_id)
+        if not subscription:
+            start_date = datetime.now()
+            end_date = start_date + timedelta(days=30)
+            await subscribe(
+                owner_id=self.owner_id,
+                plan_type="free",
+                start_date=start_date,
+                end_date=end_date,
+            )
+        count = await get_url_count(owner_id=self.owner_id)
+        print(count['url_count'])
+
+        limit = plan_limits.get(subscription["plan_type"], 10)
+
+        if count['url_count'] >= limit:
+            raise LimitExceededException()
         unique_key = self._generate_key(str(self.original_url), self.owner_id)
 
         try:
@@ -107,6 +143,7 @@ class URLShortener:
             )
             return result
         except Exception as e:
+            print(e)
             raise e
 
     @staticmethod
@@ -137,3 +174,10 @@ class URLShortener:
         key = str(original_url + owner_id).encode("utf-8")
         result = base62.encodebytes(key)[:7]
         return result
+
+
+def get_square_client(settings: Settings):
+    return Client(
+        access_token=settings.SQUARE_ACCESS_TOKEN,
+        environment=settings.SQUARE_ENVIRONMENT,
+    )

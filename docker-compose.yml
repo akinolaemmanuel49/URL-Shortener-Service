@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: shorten_api:1.0
+    image: shorten_api:latest
     container_name: shorten_api
     env_file:
       - ".env"

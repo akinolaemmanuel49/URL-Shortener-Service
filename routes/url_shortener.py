@@ -1,6 +1,6 @@
 from typing import Dict, List, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
@@ -15,7 +15,7 @@ from schemas.url import (
     APIReadResponse,
 )
 from settings import settings
-from utils import VerifyToken, URLShortener
+from utils import LimitExceededException, VerifyToken, URLShortener
 from dal import fetch_multiple_urls, fetch_original_url, remove_record
 
 # Initialize the API router for URL shortening endpoints
@@ -43,16 +43,24 @@ async def shorten_url(
     # Initialize URLShortener with the provided URL and the authenticated user's ID
     shortener = URLShortener(original_url=url, owner_id=credentials["sub"])
 
-    # Generate a unique key and store the URL in the database
-    key, created = await shortener.shorten_url()
+    try:
+        # Generate a unique key and store the URL in the database
+        key, created = await shortener.shorten_url()
 
-    # Construct the full shortened URL
-    shortened_url = f"{str(settings.SHORTENED_URL_BASE)}{key}"
+        # Construct the full shortened URL
+        shortened_url = f"{str(settings.SHORTENED_URL_BASE)}{key}"
 
-    # Return the response with the shortened URL details
-    return APICreateResponse(
-        shortened_url=shortened_url, original_url=url, created=created
-    )
+        # Return the response with the shortened URL details
+        return APICreateResponse(
+            shortened_url=shortened_url, original_url=url, created=created
+        )
+    except LimitExceededException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred",
+        )
 
 
 @router.get("/")

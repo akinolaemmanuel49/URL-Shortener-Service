@@ -42,10 +42,22 @@ async def create_tables(database: Database):
     );
     """
 
+    # SQL query to create the 'subscriptions' table if it does not exist
+    subscriptions_table_query = """
+    CREATE TABLE IF NOT EXISTS subscriptions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        owner_id VARCHAR(255) UNIQUE NOT NULL,
+        plan_type VARCHAR(20) NOT NULL, -- free, standard, premium 
+        start_date TIMESTAMP NOT NULL, 
+        end_date TIMESTAMP NOT NULL
+    );
+    """
+
     try:
         # Execute the queries to create the tables
         await database.execute(query=urls_table_query)
         await database.execute(query=metrics_table_query)
+        await database.execute(query=subscriptions_table_query)
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -108,4 +120,3 @@ class Url(BaseModel):
 
     original_url: HttpUrl
     owner_id: str
-

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict, Optional, Tuple, List
 from pydantic import HttpUrl
 from databases.interfaces import Record
@@ -20,7 +21,11 @@ async def fetch_key(original_url: HttpUrl, owner_id: str) -> Optional[Record]:
     Returns:
         Optional[Record]: The database record containing the key if found, None otherwise.
     """
-    _query = """SELECT key FROM urls WHERE original_url = :original_url AND owner_id = :owner_id"""
+    _query = """
+    SELECT key 
+    FROM urls 
+    WHERE original_url = :original_url AND owner_id = :owner_id;
+    """
     _values = {"original_url": str(original_url), "owner_id": owner_id}
 
     try:
@@ -41,7 +46,11 @@ async def fetch_original_url(key: str) -> Optional[HttpUrl]:
     Returns:
         Optional[HttpUrl]: The original URL if found, None otherwise.
     """
-    _query = """SELECT original_url FROM urls WHERE key = :key"""
+    _query = """
+    SELECT original_url 
+    FROM urls 
+    WHERE key = :key;
+    """
     _values = {"key": key}
 
     try:
@@ -88,10 +97,19 @@ async def fetch_multiple_urls(
                                            and the second element is a list of APIReadResponse objects containing
                                            shortened and original URLs.
     """
-    _count_query = (
-        """SELECT COUNT(*) AS total_count FROM urls WHERE owner_id = :owner_id"""
-    )
-    _records_query = """SELECT key, original_url FROM urls WHERE owner_id = :owner_id ORDER BY created_at DESC LIMIT :limit OFFSET :offset"""
+    _count_query = """
+    SELECT COUNT(*) AS total_count 
+    FROM urls 
+    WHERE owner_id = :owner_id;
+    """
+    _records_query = """
+    SELECT key, original_url 
+    FROM urls 
+    WHERE owner_id = :owner_id 
+    ORDER BY created_at DESC 
+    LIMIT :limit 
+    OFFSET :offset;
+    """
     _count_values = {"owner_id": owner_id}
     _record_values = {"owner_id": owner_id, "limit": limit, "offset": offset}
 
@@ -129,7 +147,11 @@ async def create_record(
     Returns:
         Tuple[str, bool]: The unique key and a boolean indicating if a new record was created.
     """
-    _query_select = """SELECT key FROM urls WHERE original_url = :original_url AND owner_id = :owner_id"""
+    _query_select = """
+    SELECT key 
+    FROM urls 
+    WHERE original_url = :original_url AND owner_id = :owner_id;
+    """
     _values_select = {"original_url": str(original_url), "owner_id": owner_id}
 
     try:
@@ -138,7 +160,17 @@ async def create_record(
         if existing_url:
             return str(existing_url["key"]), False
 
-        _query_insert = """INSERT INTO urls (key, original_url, owner_id) VALUES (:key, :original_url, :owner_id)"""
+        _query_insert = """
+        INSERT INTO urls (
+            key, 
+            original_url, 
+            owner_id
+        ) VALUES (
+            :key, 
+            :original_url, 
+            :owner_id
+        );
+        """
         _values_insert = {
             "key": unique_key,
             "original_url": str(original_url),
@@ -162,14 +194,21 @@ async def remove_record(key: str, owner_id: str) -> bool:
     Returns:
         bool: True if the record was deleted, False otherwise.
     """
-    _query = """SELECT key, original_url FROM urls WHERE key = :key AND owner_id = :owner_id"""
+    _query = """
+    SELECT key, original_url 
+    FROM urls 
+    WHERE key = :key AND owner_id = :owner_id;
+    """
     _values = {"key": key, "owner_id": owner_id}
 
     try:
         existing_url = await db.fetch_one(query=_query, values=_values)
 
         if existing_url:
-            _query_delete = """DELETE FROM urls WHERE key = :key"""
+            _query_delete = """
+            DELETE FROM urls 
+            WHERE key = :key;
+            """
             _values_delete = {"key": key}
 
             try:
@@ -193,7 +232,11 @@ async def set_metrics(key: str, **kwargs):
         key (str): The shortened URL key.
         **kwargs: Additional keyword arguments, including 'client_ip' and 'response_time'.
     """
-    _query_select = """SELECT owner_id FROM urls WHERE key = :key"""
+    _query_select = """
+    SELECT owner_id 
+    FROM urls 
+    WHERE key = :key;
+    """
     _values_select = {"key": key}
 
     try:
@@ -202,7 +245,19 @@ async def set_metrics(key: str, **kwargs):
         if result:
             owner_id = str(result["owner_id"])
 
-            _query_insert = """INSERT INTO metrics (key, owner_id, client_ip, response_time) VALUES (:key, :owner_id, :client_ip, :response_time)"""
+            _query_insert = """
+            INSERT INTO metrics (
+                key, 
+                owner_id, 
+                client_ip, 
+                response_time
+            ) VALUES (
+                :key, 
+                :owner_id, 
+                :client_ip, 
+                :response_time
+            );
+            """
             _values_insert = {
                 "key": key,
                 "owner_id": owner_id,
@@ -229,8 +284,11 @@ async def get_average_resolution_time_by_key(key: str) -> int:
     Returns:
         int: The average resolution time in milliseconds.
     """
-
-    _query_select = """SELECT AVG(response_time) FROM metrics WHERE key = :key"""
+    _query_select = """
+    SELECT AVG(response_time) 
+    FROM metrics 
+    WHERE key = :key;
+    """
     _values_select = {"key": key}
 
     try:
@@ -252,10 +310,11 @@ async def get_average_resolution_time_by_owner(owner_id: str) -> int:
     Returns:
         int: The average resolution time in milliseconds.
     """
-
-    _query_select = (
-        """SELECT AVG(response_time) FROM metrics WHERE owner_id = :owner_id"""
-    )
+    _query_select = """
+    SELECT AVG(response_time) 
+    FROM metrics 
+    WHERE owner_id = :owner_id;
+    """
     _values_select = {"owner_id": owner_id}
 
     try:
@@ -277,7 +336,11 @@ async def count_hits(key: str) -> int:
     Returns:
         int: The total number of hits for the given key.
     """
-    _query = """SELECT COUNT(*) AS total_number_of_hits FROM metrics WHERE key = :key"""
+    _query = """
+    SELECT COUNT(*) AS total_number_of_hits 
+    FROM metrics 
+    WHERE key = :key;
+    """
     _values = {"key": key}
 
     try:
@@ -305,7 +368,7 @@ async def count_top_five_hits(owner_id: str) -> Dict[str, int]:
     WHERE owner_id = :owner_id
     GROUP BY key
     ORDER BY total_hits DESC
-    LIMIT 5
+    LIMIT 5;
     """
 
     try:
@@ -327,7 +390,11 @@ async def count_unique_ips(key: str) -> int:
     Returns:
         int: The number of unique IPs.
     """
-    _query = """SELECT COUNT(DISTINCT client_ip) AS unique_ip_count FROM metrics WHERE key = :key"""
+    _query = """
+    SELECT COUNT (DISTINCT client_ip) AS unique_ip_count 
+    FROM metrics 
+    WHERE key = :key;
+    """
     _values = {"key": key}
 
     try:
@@ -386,3 +453,81 @@ async def get_metrics(key: str) -> Optional[dict]:
     except Exception as e:
         logger.error(f"An error occurred while retrieving metrics: {e}")
         return None
+
+
+async def subscribe(
+    owner_id: str, plan_type: str, start_date: datetime, end_date: datetime
+):
+    # Check for previous subscription that is expired
+    _query_select = """
+    SELECT owner_id, end_date 
+    FROM subscriptions 
+    WHERE owner_id = :owner_id AND end_date < NOW();
+    """
+    _values_select = {"owner_id": owner_id}
+
+    expired_subscription = await db.fetch_one(
+        query=_query_select, values=_values_select
+    )
+
+    if expired_subscription:
+        # If the subscription is expired, update it
+        _query_update = """
+        UPDATE subscriptions
+        SET plan_type = :plan_type,
+            start_date = :start_date,
+            end_date = :end_date
+        WHERE owner_id = :owner_id AND end_date < NOW();
+        """
+        _values_update = {
+            "owner_id": owner_id,
+            "plan_type": plan_type,
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+        await db.execute(query=_query_update, values=_values_update)
+    else:
+        # If no expired subscription, insert a new one
+        _query_insert = """
+        INSERT INTO subscriptions (
+            owner_id, 
+            plan_type, 
+            start_date, 
+            end_date
+        ) VALUES (
+            :owner_id, 
+            :plan_type, 
+            :start_date, 
+            :end_date
+        );
+        """
+        _values_insert = {
+            "owner_id": owner_id,
+            "plan_type": plan_type,
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+        await db.execute(query=_query_insert, values=_values_insert)
+
+
+async def get_subscription(owner_id: str):
+    _query = """
+    SELECT plan_type, end_date 
+    FROM subscriptions 
+    WHERE owner_id = :owner_id;
+    """
+    _values = {"owner_id": owner_id}
+
+    subscription = await db.fetch_one(query=_query, values=_values)
+    return subscription
+
+
+async def get_url_count(owner_id: str):
+    _query = """
+    SELECT COUNT(*) AS url_count
+    FROM urls 
+    WHERE owner_id = :owner_id;
+    """
+    _values = {"owner_id": owner_id}
+    url_count = await db.fetch_one(query=_query, values=_values)
+    return url_count
